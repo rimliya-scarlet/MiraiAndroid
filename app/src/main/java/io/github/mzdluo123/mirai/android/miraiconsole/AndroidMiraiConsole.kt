@@ -21,20 +21,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.mamoe.mirai.Bot
-import net.mamoe.mirai.console.utils.MiraiConsoleUI
+import net.mamoe.mirai.console.MiraiConsoleFrontEnd
 import net.mamoe.mirai.event.Listener
 import net.mamoe.mirai.event.events.BotOfflineEvent
 import net.mamoe.mirai.event.events.BotReloginEvent
 import net.mamoe.mirai.event.subscribeAlways
 import net.mamoe.mirai.event.subscribeMessages
 import net.mamoe.mirai.utils.LoginSolver
+import net.mamoe.mirai.utils.MiraiLogger
 import net.mamoe.mirai.utils.SimpleLogger
 
-class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
-    private val logBuffer = BotApplication.getSettingPreference()
-        .getString("log_buffer_preference", "300")!!.toInt()
+class AndroidMiraiConsole(context: Context) : MiraiConsoleFrontEnd {
 
-    val logStorage = LoopQueue<String>(logBuffer)
+
     val loginSolver =
         AndroidLoginSolver(context)
 
@@ -45,11 +44,15 @@ class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
     private val msgSpeeds = IntArray(refreshPerMinute)
     private var refreshCurrentPos = 0
 
-    companion object {
-        const val TAG = "MiraiAndroid"
-    }
+//    companion object {
+//        const val TAG = "MiraiAndroid"
+//    }
 
     override fun createLoginSolver(): LoginSolver = loginSolver
+
+    override fun loggerFor(identity: String?): MiraiLogger {
+        return AndroidMiraiLogger
+    }
 
     override fun prePushBot(identity: Long) = Unit
 
@@ -61,23 +64,23 @@ class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
 
     override fun pushBotAdminStatus(identity: Long, admins: List<Long>) = Unit
 
-    override fun pushLog(identity: Long, message: String) {
-        logStorage.add(message)
-        Log.d(TAG, message)
-    }
-
-    override fun pushLog(
-        priority: SimpleLogger.LogPriority,
-        identityStr: String,
-        identity: Long,
-        message: String
-    ) {
-        logStorage.add("[${priority.name}] $identityStr $message")
-        Log.d(TAG, "[${priority.name}] $identityStr $message")
-    }
+//    override fun pushLog(identity: Long, message: String) {
+//        logStorage.add(message)
+//        Log.d(TAG, message)
+//    }
+//
+//    override fun pushLog(
+//        priority: SimpleLogger.LogPriority,
+//        identityStr: String,
+//        identity: Long,
+//        message: String
+//    ) {
+//        logStorage.add("[${priority.name}] $identityStr $message")
+//        Log.d(TAG, "[${priority.name}] $identityStr $message")
+//    }
 
     override fun pushVersion(consoleVersion: String, consoleBuild: String, coreVersion: String) {
-        logStorage.add(MiraiAndroidStatus.recentStatus().format())
+        AndroidMiraiLogger.info(MiraiAndroidStatus.recentStatus().format())
     }
 
     override suspend fun requestInput(hint: String): String = ""
@@ -134,7 +137,7 @@ class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
 
     private suspend fun Bot.downloadAvatar(): Bitmap =
         try {
-            pushLog(0L, "[INFO] 正在加载头像....")
+            AndroidMiraiLogger.info("正在加载头像....")
             HttpClient().get<ByteArray>(selfQQ.avatarUrl).let { avatarData ->
                 BitmapFactory.decodeByteArray(avatarData, 0, avatarData.size)
             }
@@ -148,7 +151,7 @@ class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
             // 防止一闪而过的掉线
             delay(500)
             if (this.bot.isOnline) return@subscribeAlways
-            pushLog(0L, "[INFO] 发送离线通知....")
+            AndroidMiraiLogger.info("发送离线通知....")
             val builder =
                 NotificationCompat.Builder(
                     BotApplication.context,
@@ -173,7 +176,7 @@ class AndroidMiraiConsole(context: Context) : MiraiConsoleUI {
             }
         }
         subscribeAlways<BotReloginEvent>(priority = Listener.EventPriority.HIGHEST) {
-            pushLog(0L, "[INFO] 发送上线通知....")
+            AndroidMiraiLogger.info( "发送上线通知....")
             NotificationManagerCompat.from(BotApplication.context)
                 .cancel(BotService.OFFLINE_NOTIFICATION_ID)
         }

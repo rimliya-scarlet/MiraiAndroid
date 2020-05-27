@@ -7,7 +7,7 @@
 
         <variable
             name="pluginData"
-            type="net.mamoe.mirai.console.plugins.PluginDescription" />
+            type="net.mamoe.mirai.console.plugin.FilePluginDescription" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -58,7 +58,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="@{pluginData.basePath}"
+                    android:text="@{pluginData.file.path}"
                     android:textSize="14sp"
                     app:layout_constraintStart_toStartOf="@+id/pluginName_text"
                     app:layout_constraintTop_toBottomOf="@+id/pluginVersion_text"

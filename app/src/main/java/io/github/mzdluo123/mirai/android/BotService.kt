@@ -30,14 +30,16 @@ import net.mamoe.mirai.console.command.ConsoleCommandSender.sendMessage
 import net.mamoe.mirai.console.command.ContactCommandSender
 import net.mamoe.mirai.console.utils.checkManager
 import net.mamoe.mirai.event.subscribeMessages
+import net.mamoe.mirai.message.data.toMessage
 import net.mamoe.mirai.utils.SimpleLogger
 import java.io.File
 import kotlin.system.exitProcess
 
 
-class BotService : Service(), CommandOwner {
+class BotService : Service() {
     lateinit var androidMiraiConsole: AndroidMiraiConsole
         private set
+    lateinit var miraiConsole:MiraiConsole
     private val binder = BotBinder()
     private var isStart = false
     private lateinit var powerManager: PowerManager
@@ -97,6 +99,7 @@ class BotService : Service(), CommandOwner {
             AndroidMiraiConsole(
                 baseContext
             )
+        MiraiConsole.init(androidMiraiConsole)
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BotWakeLock")
     }
@@ -133,20 +136,20 @@ class BotService : Service(), CommandOwner {
             }
         }
         GlobalScope.launch(handler) { bot.login() }
-        bot.subscribeMessages {
-            startsWith("/") { message ->
-                if (bot.checkManager(this.sender.id))
-                    CommandManager.runCommand(ContactCommandSender(this.subject), message)
-            }
-        }
+//        bot.subscribeMessages {
+//            startsWith("/") { message ->
+//                if (bot.checkManager(this.sender.id))
+//                    CommandManager.runCommand(ContactCommandSender(this.subject), message)
+//            }
+//        }
 
-        GlobalScope.launch(handler) { sendMessage("$qq login successes") }
+        GlobalScope.launch(handler) {  }
         MiraiConsole.frontEnd.pushBot(bot)
     }
 
     private fun registerDefaultCommand() {
         register(_description = "显示MiraiAndroid运行状态", _name = "android") { sender, _ ->
-            sender.sendMessage(MiraiAndroidStatus.recentStatus().format())
+            sender.sendMessage(MiraiAndroidStatus.recentStatus().format().toMessage())
             true
         }
         register(_description = "查看已加载的脚本", _name = "script", _usage = "script") { sender, _ ->
@@ -157,7 +160,7 @@ class BotService : Service(), CommandOwner {
                     "\n"
                 ) { "${it.info.name} ${it.info.version} by ${it.info.author}" }
                 append("\n已加载Bot数量：${ScriptManager.instance.botsSize}")
-            })
+            }.toMessage())
             true
         }
     }
@@ -172,7 +175,7 @@ class BotService : Service(), CommandOwner {
             Log.e("wakeLockError", e.message)
         }
         MiraiAndroidStatus.startTime = System.currentTimeMillis()
-        MiraiConsole.start(
+        MiraiConsole.(
             androidMiraiConsole,
             path = getExternalFilesDir(null).toString()
         )
