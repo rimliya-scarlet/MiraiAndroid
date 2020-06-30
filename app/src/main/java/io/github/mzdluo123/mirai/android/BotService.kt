@@ -16,6 +16,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import io.github.mzdluo123.mirai.android.miraiconsole.AndroidMiraiConsole
+import io.github.mzdluo123.mirai.android.miraiconsole.AndroidMiraiConsoleFontEnd
+import io.github.mzdluo123.mirai.android.miraiconsole.AndroidMiraiLogger
 import io.github.mzdluo123.mirai.android.receiver.PushMsgReceiver
 import io.github.mzdluo123.mirai.android.script.ScriptManager
 import io.github.mzdluo123.mirai.android.utils.MiraiAndroidStatus
@@ -25,12 +27,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.MiraiConsole
-import net.mamoe.mirai.console.command.CommandManager
-import net.mamoe.mirai.console.command.CommandOwner
 import net.mamoe.mirai.console.command.ConsoleCommandSender
-import net.mamoe.mirai.console.command.ConsoleCommandSender.sendMessage
-import net.mamoe.mirai.console.command.ContactCommandSender
-import net.mamoe.mirai.console.utils.checkManager
 import net.mamoe.mirai.event.subscribeMessages
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.utils.SimpleLogger
@@ -39,9 +36,10 @@ import kotlin.system.exitProcess
 
 
 @ExperimentalUnsignedTypes
-class BotService : Service(), CommandOwner {
-    lateinit var consoleFrontEnd: AndroidMiraiConsole
+class BotService : Service() {
+    lateinit var consoleFontEndFrontEnd: AndroidMiraiConsoleFontEnd
         private set
+    private lateinit var miraiConsole: AndroidMiraiConsole
     private val binder = BotBinder()
     private var isStart = false
     private lateinit var powerManager: PowerManager
@@ -93,7 +91,7 @@ class BotService : Service(), CommandOwner {
             }
         } catch (e: Exception) {
             Log.e("onStartCommand", e.message ?: "null")
-            consoleFrontEnd.pushLog(0L, "onStartCommand:发生错误 $e")
+            AndroidMiraiLogger.error("onStartCommand:发生错误 $e")
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -101,10 +99,10 @@ class BotService : Service(), CommandOwner {
     @SuppressLint("InvalidWakeLockTag")
     override fun onCreate() {
         super.onCreate()
-        consoleFrontEnd =
-            AndroidMiraiConsole(
-                baseContext
-            )
+        miraiConsole = AndroidMiraiConsole(getExternalFilesDir(null))
+        consoleFontEndFrontEnd = miraiConsole.frontEnd as AndroidMiraiConsoleFontEnd
+
+
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BotWakeLock")
     }
@@ -115,9 +113,9 @@ class BotService : Service(), CommandOwner {
         if (qq == 0L) return
 
         //CommandManager.runCommand(ConsoleCommandSender, "login $qq $pwd")
-        consoleFrontEnd.pushLog(0L, "[INFO] 自动登录....")
+        AndroidMiraiLogger.info("自动登录....")
         val handler = CoroutineExceptionHandler { _, throwable ->
-            consoleFrontEnd.pushLog(0L, "[ERROR] 自动登录失败 $throwable")
+            AndroidMiraiLogger.error("[ERROR] 自动登录失败 $throwable")
         }
 
         val bot = Bot(qq, pwd!!.chunkedHexToBytes()) {
@@ -125,17 +123,17 @@ class BotService : Service(), CommandOwner {
             this.loginSolver = MiraiConsole.frontEnd.createLoginSolver()
             this.botLoggerSupplier = {
                 SimpleLogger("[BOT $qq]") { _, message, e ->
-                    consoleFrontEnd.pushLog(0L, "[INFO] $message")
+                    AndroidMiraiLogger.info(message)
                     e?.also {
-                        consoleFrontEnd.pushLog(0L, "[BOT ERROR $qq] $it")
+                        AndroidMiraiLogger.error("[BOT ERROR $qq] $it")
                     }?.printStackTrace()
                 }
             }
             this.networkLoggerSupplier = {
                 SimpleLogger("BOT $qq") { _, message, e ->
-                    consoleFrontEnd.pushLog(0L, "[NETWORK] $message")
+                    AndroidMiraiLogger.info("[NETWORK] $message")
                     e?.also {
-                        consoleFrontEnd.pushLog(0L, "[NETWORK ERROR] $it")
+                        AndroidMiraiLogger.info("[NETWORK ERROR] $it")
                     }?.printStackTrace()
                 }
             }
@@ -144,8 +142,7 @@ class BotService : Service(), CommandOwner {
         GlobalScope.launch(handler) { bot.login() }
         bot.subscribeMessages {
             startsWith("/") { message ->
-                if (bot.checkManager(this.sender.id))
-                    CommandManager.runCommand(ContactCommandSender(bot, this.subject), message)
+                miraiCons
             }
         }
 
@@ -181,11 +178,8 @@ class BotService : Service(), CommandOwner {
             Log.e("wakeLockError", e.message ?: "null")
         }
         MiraiAndroidStatus.startTime = System.currentTimeMillis()
-        MiraiConsole.start(
-            consoleFrontEnd,
-            consoleVersion = BuildConfig.COREVERSION,
-            path = getExternalFilesDir(null).toString()
-        )
+
+
         registerReceiver()
         isStart = true
         createNotification()
@@ -211,7 +205,7 @@ class BotService : Service(), CommandOwner {
 
     private fun registerReceiver() {
         if (allowPushMsg) {
-            MiraiConsole.frontEnd.pushLog(0L, "[MA] 正在启动消息推送广播监听器")
+            AndroidMiraiLogger.info("[MA] 正在启动消息推送广播监听器")
             val filter = IntentFilter().apply {
                 addAction("io.github.mzdluo123.mirai.android.PushMsg")
                 priority = 999
@@ -224,7 +218,7 @@ class BotService : Service(), CommandOwner {
 
     internal fun sendFriendMsg(id: Long, msg: String?) {
         bot?.launch {
-            MiraiConsole.frontEnd.pushLog(0L, "[MA] 成功处理一个好友消息推送请求: $msg->$id")
+            AndroidMiraiLogger.info("[MA] 成功处理一个好友消息推送请求: $msg->$id")
             this@BotService.bot!!.getFriend(id).sendMessage(msg!!)
         }
     }
@@ -232,14 +226,14 @@ class BotService : Service(), CommandOwner {
 
     internal fun sendGroupMsg(id: Long, msg: String?) {
         bot?.launch {
-            MiraiConsole.frontEnd.pushLog(0L, "[MA] 成功处理一个群消息推送请求: $msg->$id")
+            AndroidMiraiLogger.info("[MA] 成功处理一个群消息推送请求: $msg->$id")
             this@BotService.bot!!.getGroup(id).sendMessage(msg!!)
         }
     }
 
     internal fun sendGroupMsgWithAT(id: Long, msg: String?, user: Long) {
         bot?.launch {
-            MiraiConsole.frontEnd.pushLog(0L, "[MA] 成功处理一个群消息推送请求: $msg->$id")
+            AndroidMiraiLogger.info("[MA] 成功处理一个群消息推送请求: $msg->$id")
             val group = this@BotService.bot!!.getGroup(id)
             group.sendMessage(At(group[user]) + msg!!)
         }
@@ -254,6 +248,7 @@ class BotService : Service(), CommandOwner {
     inner class BotBinder : IbotAidlInterface.Stub() {
         override fun runCmd(cmd: String?) {
             cmd?.let {
+
                 CommandManager.runCommand(ConsoleCommandSender, it)
             }
         }
@@ -262,14 +257,13 @@ class BotService : Service(), CommandOwner {
             //防止
             // ClassCastException: java.lang.Object[] cannot be cast to java.lang.String[]
             // 不知道有没有更好的写法
-            return consoleFrontEnd.logStorage.toArray(
-                arrayOfNulls(consoleFrontEnd.logStorage.size)
-            )
+            return AndroidMiraiLogger.getLogArray()
+
         }
 
         override fun submitVerificationResult(result: String?) {
             result?.let {
-                consoleFrontEnd.loginSolver.verificationResult.complete(it)
+                consoleFontEndFrontEnd.loginSolver.verificationResult.complete(it)
             }
         }
 
@@ -287,7 +281,7 @@ class BotService : Service(), CommandOwner {
         }
 
         override fun clearLog() {
-            consoleFrontEnd.logStorage.clear()
+            AndroidMiraiLogger.clear()
         }
 
         override fun enableScript(index: Int) {
@@ -298,15 +292,15 @@ class BotService : Service(), CommandOwner {
             ScriptManager.instance.disable(index)
         }
 
-        override fun getUrl(): String = consoleFrontEnd.loginSolver.url
+        override fun getUrl(): String = consoleFontEndFrontEnd.loginSolver.url
 
         override fun getScriptSize(): Int = ScriptManager.instance.hosts.size
 
-        override fun getCaptcha(): ByteArray = consoleFrontEnd.loginSolver.captchaData
+        override fun getCaptcha(): ByteArray = consoleFontEndFrontEnd.loginSolver.captchaData
 
 
         override fun sendLog(log: String?) {
-            consoleFrontEnd.logStorage.add(log)
+            consoleFontEndFrontEnd.logStorage.add(log)
         }
 
         override fun getBotInfo(): String = MiraiAndroidStatus.recentStatus().format()
