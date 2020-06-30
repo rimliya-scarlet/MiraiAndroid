@@ -5,7 +5,7 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
 
 
-def CORE_VERSION = "1.0.1"
+def CORE_VERSION = "1.0.3"
 def LUAMIRAI_VERSION = "0.2.1"
 
 android {
@@ -14,16 +14,16 @@ android {
 
     defaultConfig {
         applicationId "io.github.mzdluo123.mirai.android"
-        minSdkVersion 24
+        minSdkVersion 21
         targetSdkVersion 29
-        versionCode 13
-        versionName "2.3"
+        versionCode 22
+        versionName "2.9.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "COREVERSION", "\"$CORE_VERSION\"")
         buildConfigField("String", "LUAMIRAI_VERSION", "\"$LUAMIRAI_VERSION\"")
     }
-    dataBinding {
-        enabled = true
+    buildFeatures {
+        dataBinding = true
     }
 
     buildTypes {
@@ -59,7 +59,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'androidx.core:core-ktx:1.2.0'
+    implementation 'androidx.core:core-ktx:1.3.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.google.android.material:material:1.1.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
@@ -81,6 +81,9 @@ dependencies {
     implementation 'org.jetbrains.anko:anko-common:0.10.1'
     implementation "ch.acra:acra-core:5.1.3"
     implementation "ch.acra:acra-toast:5.1.3"
+
+//    // https://mvnrepository.com/artifact/net.mamoe/mirai-console
+//    implementation group: 'net.mamoe', name: 'mirai-console', version: '0.5.1'
 
 // https://mvnrepository.com/artifact/org.yaml/snakeyaml
     implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'

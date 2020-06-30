@@ -6,6 +6,13 @@
  * @LastEditors: sueRimn
  * @LastEditTime: 2020-05-09 12:22:15
  -->
+ 
+ <div align="center">
+   <img width="160" src="https://cdn.jsdelivr.net/gh/mzdluo123/blog_imgs/img/20200531205703.png" alt="logo"></br>
+
+   <img width="95" src="https://cdn.jsdelivr.net/gh/mzdluo123/blog_imgs/img/20200531205726.png" alt="title">
+</div>
+
 # MiraiAndroid
 
 <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/mzdluo123/MiraiAndroid/Android Pull Request & Master CI?style=flat-square">
@@ -14,15 +21,13 @@
 
 <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/mzdluo123/MiraiAndroid?style=flat-square">
 
-（实验性）在Android上运行Mirai-console
+mirai-console的Android前端程序，可作为qq机器人使用，支持多种脚本接口
 
 关于mirai项目的一切请点击[这里](https://github.com/mamoe/mirai)
 
-**仅Android 6及以上可用**
-
 相比使用`Termux`或者是`Linux Deploy`等应用运行mirai的方案，该项目提供的方案具有更好的性能以及更少的资源占用，但可能存在兼容性问题
 
-最新的构建版本你可以到[这里](https://github.com/mzdluo123/MiraiAndroid/actions)找到，下载可能需要登录
+最新的构建版本你可以到[这里](https://github.com/mzdluo123/MiraiAndroid/actions)找到，下载可能需要登录；稍稳定的版本可用到release或qq群内下载
 
 更多信息请加QQ群`655057127`了解
 
@@ -173,6 +178,8 @@ function regEv() {
 
 这是最简单的方式。app切换到插件管理点击右上角选择即可，你也可以使用系统文件选择器直接打开jar文件
 
+**如果你无法选择文件**，请使用第三方文件选择器选择（例如Mix）
+
 ## 使用pc转换后导入
 
 请按照以下方法操作
@@ -202,12 +209,75 @@ d8.bat --output 输出文件.jar 源文件
 
 重启即可使用插件，当然部分插件可能也会存在兼容性问题
 
+# FAQ
 
-# Console插件兼容不完全列表
+Q: 后台运行被系统杀死<br>
+A：请手动将应用添加到系统后台白名单
 
-以下插件由群友测试未发现问题，你可以到群内下载
+Q：应用崩溃或后台报错<br>
+A：如果是后台报错一般是插件或者是mirai-core的问题，是mirai-core的问题请在菜单内找到分享日志并到群内或开启issue反馈，插件的问题请联系对应开发者；如果是应用崩溃，请重启并按照上面的方法提交日志给我们
+
+# 兼容的Console插件列表
+
+以下插件由群友测试未发现问题，你可以到群内下载，或是到[插件中心](https://github.com/mamoe/mirai-plugins)手动下载jvm版并导入
 
 * mirai-api-http
 * HsoSe
 * keywordReply
 * forward
+* CQHTTPMirai
+
+对于其他插件请自行尝试；此外，如果你的插件使用了一些Android不支持的api(例如BufferedImage)那么使用了这个api的功能将绝对不能正常工作
+
+# 关于支持的Android版本
+
+我们尚不清楚MiraiAndroid究竟能在哪些Android版本上正常工作，需要大家进行测试
+
+我们已经测试无问题的Android版本：
+
+* Android 10
+* Android 8.1（无法在Android端编译部分插件）
+
+其他版本还未进行测试，以下是测试要求：
+
+* 程序不闪退，不报错，不出现无响应，通知显示正常，能正常完成登录
+* 能够在Android端编译jvm插件（可选）
+* 能够使用编译好的jvm插件发送消息，发送图片，处理事件和正确读写配置
+* 能够正常运行两个脚本引擎的demo
+
+从下一个release版本开始项目的minsdk版本将调整至21（Android 5.1），测试结果可以通过issue和交流群告诉我们，谢谢！（反馈时记得带上日志和Android版本，抓取日志可以在控制台右上角菜单内找到）
+
+
+# 消息推送(2.9新增)
+
+必须使用自动登录并在设置中开启才能使用该功能
+
+你可以发送广播来快速向指定群或联系人推送信息，这里是data的URI格式
+
+```
+ma://sendGroupMsg?msg=消息&id=群号
+ma://sendFriendMsg?msg=消息&id=账号
+ma://sendFriendMsg?msg=消息&id=账号&at=要at的人
+```
+
+```kotlin
+sendBroadcast(Intent("io.github.mzdluo123.mirai.android.PushMsg").apply {
+        data = Uri.parse("ma://sendGroupMsg?msg=HelloWorld&id=655057127")
+    })
+```
+
+以下是auto.js的示例
+
+```js
+app.sendBroadcast({
+    action: "io.github.mzdluo123.mirai.android.PushMsg",
+    data: "ma://sendGroupMsg?msg=来自autojs的消息&id=655057127"
+})
+```
+
+以下是tasker的示例
+
+```yaml
+    ma (2)
+    	A1: 发送意图 [ 操作:io.github.mzdluo123.mirai.android.PushMsg 类别:None Mime类型: 数据:ma://sendGroupMsg?msg=来自tasker的消息&id=655057127 额外: 额外: 额外: 包: 类: 目标:Broadcast Receiver ] 
+```
