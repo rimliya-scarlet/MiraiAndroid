@@ -21,8 +21,8 @@ import io.github.mzdluo123.mirai.android.utils.shareText
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.app_bar_main.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.UnstableDefault
-import kotlinx.serialization.json.content
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import splitties.alertdialog.appcompat.alertDialog
@@ -33,7 +33,7 @@ import splitties.toast.toast
 import java.io.File
 import java.io.FileReader
 
-@UnstableDefault
+
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     companion object {
@@ -86,9 +86,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             toast("检查更新失败")
             throwable.printStackTrace()
             Log.e(TAG, throwable.message ?: return@CoroutineExceptionHandler)
+            finish()
+            BotApplication.context.stopBotService()
         }
 
-        if (BuildConfig.DEBUG) {
+        if (!BuildConfig.DEBUG) {
             toast("跳过更新检查")
         } else {
             lifecycleScope.launch(exceptionHandler) {
@@ -117,11 +119,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
             return@withContext res
         }
 
-        val json = BotApplication.json.value.parseJson(rep ?: throw IllegalStateException("返回为空"))
-        if (json.contains("url")) {
-            val body = json.jsonObject["body"]?.content ?: "暂无更新记录"
-            val htmlUrl = json.jsonObject["html_url"]!!.content
-            val version = json.jsonObject["tag_name"]!!.content
+        val json =
+            BotApplication.json.value.parseToJsonElement(rep ?: throw IllegalStateException("返回为空"))
+        if (json.jsonObject.containsKey("url")) {
+            val body = json.jsonObject["body"]?.jsonPrimitive?.content ?: "暂无更新记录"
+            val htmlUrl = json.jsonObject["html_url"]!!.jsonPrimitive.content
+            val version = json.jsonObject["tag_name"]!!.jsonPrimitive.content
             if (version == BuildConfig.VERSION_NAME) {
                 return
             }
@@ -132,6 +135,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
                     }
                 }.show()
             }
+        } else {
+            throw IllegalStateException("检查更新失败")
         }
     }
 
